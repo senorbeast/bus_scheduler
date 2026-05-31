@@ -1,0 +1,32 @@
+id: "bengaluru_kochi"
+name: "Bengaluru-Kochi Corridor"
+
+route:
+  type: "linear"
+  segments:
+    - {from: "Bengaluru", to: "A", distance_km: 100}
+    - {from: "A", to: "B", distance_km: 120}
+    - {from: "B", to: "C", distance_km: 100}
+    - {from: "C", to: "D", distance_km: 120}
+    - {from: "D", to: "Kochi", distance_km: 100}
+
+physics:
+  battery_range_km: 240
+  charge_time_minutes: 25
+  travel_speed_kmh: 60
+  charge_to_full: true
+
+stations:
+  - id: "A"
+    chargers:
+      - {id: "A-1", operational: true, available_from: "00:00", available_until: "23:59"}
+  - id: "B"
+    chargers:
+      - {id: "B-1", operational: true, available_from: "00:00", available_until: "23:59"}
+  - id: "C"
+    chargers:
+      - {id: "C-1", operational: true, available_from: "00:00", available_until: "23:59"}
+  - id: "D"
+    chargers:
+      - {id: "D-1", operational: true, available_from: "00:00", available_until: "23:59"}
+

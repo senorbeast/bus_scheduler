@@ -1,0 +1,26 @@
+meta:
+  id: "scenario-7"
+  world_id: "bengaluru_kochi"
+  name: "Mixed Full And Intermediate"
+  description: "Full-corridor buses share chargers with short A/B station-origin trips."
+  version: "1.0"
+
+operators:
+  - {id: "kpn", display_name: "KPN Travels", weight: 1.0}
+  - {id: "freshbus", display_name: "FreshBus", weight: 1.0}
+  - {id: "flixbus", display_name: "FlixBus", weight: 1.0}
+
+weights:
+  individual: 2.0
+  operator: 1.0
+  overall: 1.0
+  shift: 0.0
+
+buses:
+  - {id: "bus-BK-01", operator: "kpn", direction: "BK", departure: "19:00"}
+  - {id: "bus-KB-01", operator: "freshbus", direction: "KB", departure: "19:00"}
+  - {id: "bus-AB-01", operator: "flixbus", origin_node: "A", destination_node: "B", departure: "20:35", requires_origin_charge: true, initial_range_km: 50}
+  - {id: "bus-BA-01", operator: "kpn", origin_node: "B", destination_node: "A", departure: "20:35", requires_origin_charge: true, initial_range_km: 50}
+  - {id: "bus-BK-02", operator: "freshbus", direction: "BK", departure: "19:40"}
+  - {id: "bus-KB-02", operator: "flixbus", direction: "KB", departure: "19:40"}
+

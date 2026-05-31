@@ -1,0 +1,24 @@
+meta:
+  id: "scenario-6"
+  world_id: "bengaluru_kochi"
+  name: "Intermediate A-B Concurrent"
+  description: "A to B and B to A buses depart concurrently and use origin chargers before departure."
+  version: "1.0"
+
+operators:
+  - {id: "kpn", display_name: "KPN Travels", weight: 1.0}
+  - {id: "freshbus", display_name: "FreshBus", weight: 1.0}
+  - {id: "flixbus", display_name: "FlixBus", weight: 1.0}
+
+weights:
+  individual: 2.0
+  operator: 1.0
+  overall: 0.5
+  shift: 0.0
+
+buses:
+  - {id: "bus-AB-01", operator: "kpn", origin_node: "A", destination_node: "B", departure: "19:00", requires_origin_charge: true, initial_range_km: 40}
+  - {id: "bus-AB-02", operator: "freshbus", origin_node: "A", destination_node: "B", departure: "19:00", requires_origin_charge: true, initial_range_km: 60}
+  - {id: "bus-BA-01", operator: "flixbus", origin_node: "B", destination_node: "A", departure: "19:00", requires_origin_charge: true, initial_range_km: 40}
+  - {id: "bus-BA-02", operator: "kpn", origin_node: "B", destination_node: "A", departure: "19:00", requires_origin_charge: true, initial_range_km: 60}
+

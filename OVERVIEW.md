@@ -218,6 +218,32 @@ final_score = priority_override × bus.weight × (
 
 ### Known weaknesses to get ahead of
 
+---
+
+## 10. Time and Space Complexity
+
+The v1 implementation supports one linear route with arbitrary bus endpoints on that route.
+For a bus trip, let `S_trip` be the number of candidate charging stations strictly between
+that bus's origin and destination.
+
+**Planner time complexity:** `O(2^S_trip * S_trip)` per bus. The planner enumerates every
+station subset and validates the distance gaps in that subset. This is acceptable for the
+current four-station corridor. For large networks, replace subset enumeration with dynamic
+programming or graph shortest-path search over reachable charging stops.
+
+**Simulation time complexity:** approximately `O(E log E + Q * R + Q * B)` per run, where
+`E` is the number of simulation events, `Q` is the number of queue arbitration operations,
+`R` is the number of soft rules, and `B` is the number of buses. The `E log E` term comes
+from heap event scheduling. The `Q * B` term is from the current operator fairness rule,
+which scans bus history through `ScheduleContext.get_operator_delays()`.
+
+**Space complexity:** `O(B + C + E + L)`, where `B` is bus state count, `C` is charger state
+count, `E` is queued future events, and `L` is completed charging log entries.
+
+**Scale note:** For 500+ buses, cache operator delay totals/counts incrementally in
+`ScheduleContext` to reduce operator fairness scoring from `O(B)` to `O(1)` per score call
+(see `FUTURE_CHANGES.md` FC-18).
+
 - "Why do buses follow a static plan?" → Own it. "V1 assigns plans at startup — correct for the baseline scenario. V2 uses JIT routing via `RouteProvider.get_next_reachable_stations()` for charger failure recovery. The interface is ready; the engine handler is the 50-line V2 item."
 - "Score scales differ across rules" → Own it. "IndividualWait is 0–120, OverallThroughput is 100–540. A normaliser wrapper is the clean V2 fix. Documented in REFUTE.md R-07."
 - "All buses use minimum-stop plans" → Own it. "Round-robin spreads buses across the 3 valid plans. Congestion-aware selection that reads live queue depths is the next upgrade — 10 lines in `select_charging_plan()`."

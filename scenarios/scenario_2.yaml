@@ -1,0 +1,39 @@
+meta:
+  id: "scenario-2"
+  world_id: "bengaluru_kochi"
+  name: "Bunched start"
+  description: "Buses from both directions depart in a tight cluster (every 8 min) over the first 50 minutes, then space out. Creates heavy early contention."
+  version: "1.0"
+
+operators: &operators
+  - {id: "kpn", display_name: "KPN Travels", weight: 1.0}
+  - {id: "freshbus", display_name: "FreshBus", weight: 1.0}
+  - {id: "flixbus", display_name: "FlixBus", weight: 1.0}
+
+weights: &weights
+  individual: 1.0
+  operator: 1.0
+  overall: 1.0
+  shift: 0.0
+
+buses:
+  - {id: "bus-BK-01", operator: "kpn", direction: "BK", departure: "19:00", priority_class: "standard", weight: 1.0}
+  - {id: "bus-BK-02", operator: "freshbus", direction: "BK", departure: "19:08", priority_class: "standard", weight: 1.0}
+  - {id: "bus-BK-03", operator: "flixbus", direction: "BK", departure: "19:16", priority_class: "standard", weight: 1.0}
+  - {id: "bus-BK-04", operator: "kpn", direction: "BK", departure: "19:24", priority_class: "standard", weight: 1.0}
+  - {id: "bus-BK-05", operator: "freshbus", direction: "BK", departure: "19:32", priority_class: "standard", weight: 1.0}
+  - {id: "bus-BK-06", operator: "flixbus", direction: "BK", departure: "19:40", priority_class: "standard", weight: 1.0}
+  - {id: "bus-BK-07", operator: "kpn", direction: "BK", departure: "19:48", priority_class: "standard", weight: 1.0}
+  - {id: "bus-BK-08", operator: "freshbus", direction: "BK", departure: "20:03", priority_class: "standard", weight: 1.0}
+  - {id: "bus-BK-09", operator: "flixbus", direction: "BK", departure: "20:18", priority_class: "standard", weight: 1.0}
+  - {id: "bus-BK-10", operator: "kpn", direction: "BK", departure: "20:33", priority_class: "standard", weight: 1.0}
+  - {id: "bus-KB-01", operator: "freshbus", direction: "KB", departure: "19:00", priority_class: "standard", weight: 1.0}
+  - {id: "bus-KB-02", operator: "flixbus", direction: "KB", departure: "19:08", priority_class: "standard", weight: 1.0}
+  - {id: "bus-KB-03", operator: "kpn", direction: "KB", departure: "19:16", priority_class: "standard", weight: 1.0}
+  - {id: "bus-KB-04", operator: "freshbus", direction: "KB", departure: "19:24", priority_class: "standard", weight: 1.0}
+  - {id: "bus-KB-05", operator: "flixbus", direction: "KB", departure: "19:32", priority_class: "standard", weight: 1.0}
+  - {id: "bus-KB-06", operator: "kpn", direction: "KB", departure: "19:40", priority_class: "standard", weight: 1.0}
+  - {id: "bus-KB-07", operator: "freshbus", direction: "KB", departure: "19:48", priority_class: "standard", weight: 1.0}
+  - {id: "bus-KB-08", operator: "flixbus", direction: "KB", departure: "20:03", priority_class: "standard", weight: 1.0}
+  - {id: "bus-KB-09", operator: "kpn", direction: "KB", departure: "20:18", priority_class: "standard", weight: 1.0}
+  - {id: "bus-KB-10", operator: "freshbus", direction: "KB", departure: "20:33", priority_class: "standard", weight: 1.0}

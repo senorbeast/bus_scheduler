@@ -425,3 +425,23 @@ Update `StationState.get_free_charger_at()` to call `can_charge_at()` instead of
 | R-25 ChargerState missing helper | 🟢 | No | 10 lines |
 
 **Items requiring core changes: R-16, R-17, R-24. All others are targeted fixes.**
+
+---
+
+## R-26 🟡 Direction-Only Buses Cannot Represent Intermediate Trips
+
+**Status: FIXED IN IMPLEMENTATION** — The implemented model supports explicit `origin_node`
+and `destination_node` on each bus while preserving `direction: "BK"|"KB"` compatibility for
+the original full-corridor scenarios.
+
+**Problem:** A direction-only bus model can represent Bengaluru→Kochi and Kochi→Bengaluru,
+but not operationally common short legs like A→B or B→A. Those trips may still contend for
+chargers if they need depot/top-up charging before departure.
+
+**Fix implemented:** Loader derives direction from the endpoint positions when explicit nodes
+are provided. The planner generates charging plans only between the bus's endpoints. Short
+trips such as A→B usually have no en-route charging plan, and `requires_origin_charge: true`
+models pre-departure charger contention at the origin station.
+
+**Remaining limitation:** This is still a single linear-route model. Multi-route shared
+stations remain R-24/FC-22 future work.

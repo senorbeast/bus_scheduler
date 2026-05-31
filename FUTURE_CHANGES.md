@@ -574,3 +574,32 @@ Multiple scenarios can reference the same world. Changing `weights.operator` in
 | FC-26 Headway management | min_headway field | 1 Soft | No | No |
 | FC-27 Real-time priority override | No | No | ~10 lines | No |
 | FC-28 World/scenario file split | New file layout | No | Loader only | No |
+
+---
+
+### FC-29 — Station-Origin Top-Up Charging Before Short Legs
+
+**Scenario:** Buses can operate short legs such as A→B or B→A. Even though the trip is shorter
+than full battery range, a bus may arrive at the origin station with low state of charge and
+need a top-up before departure. Multiple buses leaving A or B at the same time contend for the
+same charger before entering service.
+
+**Real-life parallel:** Depot-origin or station-origin electric coaches often perform a short
+pre-service top-up before a scheduled departure, especially after a prior inbound trip or layover.
+
+**Data change:** Already supported in v1 implementation:
+```yaml
+buses:
+  - id: "bus-AB-01"
+    origin_node: "A"
+    destination_node: "B"
+    departure: "19:00"
+    requires_origin_charge: true
+    initial_range_km: 40
+```
+
+**Code touch:** No further engine rewrite for v1. Long-term, replace the boolean with a richer
+charging intent object containing target state-of-charge, minimum departure SOC, and scheduled
+layover window.
+
+**Engine rewrite:** No for boolean top-up. Partial-charge SOC modeling is a future enhancement.
