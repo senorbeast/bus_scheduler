@@ -71,6 +71,13 @@ Changing weights, adding buses, or trying a different priority strategy is a YAM
 Layers 1+2 define. Adding a new soft rule, hard rule, or event type touches only the layer's *edge*
 (a new class + one registration line). The engine loop, event dispatch, and scoring formula are stable.
 
+For live local testing without Streamlit, `scripts/run_scenario.py` uses the same loader and engine
+path in memory:
+
+```bash
+uv run python scripts/run_scenario.py scenarios/scenario_1.yaml --world-dir world
+```
+
 ---
 
 ## 3. The RouteProvider Pattern (Strategy Pattern for Topology)
@@ -452,8 +459,12 @@ add a look-ahead scorer that simulates one time step ahead before committing. Th
 is already pluggable enough to accommodate this.
 
 **"Can you add a rule right now?"**
-Yes. Write a class extending `SoftRule`, add one line to the rules list in `app.py`, optionally
-add a field with default to `Weights`. The engine never changes.
+Yes. Write a class extending `SoftRule`, add one line to the scorer registration list in
+`scheduler.engine.run_simulation()`, optionally add a defaulted field to `Weights`, and set that
+weight in scenario YAML. A commented insertion template lives in `scheduler/rules/soft_rules.py`.
+Hard plan constraints follow the same edge pattern: implement `HardRule` and register it in
+`scheduler.planner.get_valid_charging_plans()`, with a commented template in
+`scheduler/rules/hard_rules.py`. The event loop itself does not need rule-specific branches.
 
 **"What breaks at 500 buses?"**
 `ScheduleContext.get_operator_delays()` is O(B) per queue evaluation — becomes O(B²) at scale.

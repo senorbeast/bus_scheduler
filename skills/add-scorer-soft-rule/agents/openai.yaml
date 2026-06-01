@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Scorer Soft Rule"
+  short_description: "Add a bus scheduler soft queue scoring rule."
+  default_prompt: "Add a new soft scoring rule to this bus scheduler project."

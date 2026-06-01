@@ -1,0 +1,25 @@
+id: "new_world"
+name: "New Linear Corridor"
+
+route:
+  type: "linear"
+  segments:
+    - {from: "Origin", to: "A", distance_km: 100}
+    - {from: "A", to: "B", distance_km: 120}
+    - {from: "B", to: "Destination", distance_km: 100}
+
+physics:
+  battery_range_km: 240
+  charge_time_minutes: 25
+  travel_speed_kmh: 60
+
+planner:
+  extra_stop_wait_threshold_minutes: 120
+
+stations:
+  - id: "A"
+    chargers:
+      - {id: "A-1", operational: true, available_from: "00:00", available_until: "23:59"}
+  - id: "B"
+    chargers:
+      - {id: "B-1", operational: true, available_from: "00:00", available_until: "23:59"}

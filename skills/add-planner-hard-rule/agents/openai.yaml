@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Planner Hard Rule"
+  short_description: "Add a bus scheduler hard planning constraint."
+  default_prompt: "Add a new planner hard rule to this bus scheduler project."

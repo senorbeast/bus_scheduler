@@ -57,3 +57,29 @@ class DriverShiftProximityRule(SoftRule):
             return 300.0
         urgency_ratio = journey_remaining / max(shift_remaining, 1.0)
         return max(0.0, (urgency_ratio - 0.5) * 200.0)
+
+
+# Template for adding a new soft queue-priority rule:
+#
+# class ElectricityCostRule(SoftRule):
+#     """Example: prefer charging during cheaper time windows."""
+#
+#     name = "electricity_cost"
+#
+#     def score(self, bus_state: BusState, context: ScheduleContext) -> float:
+#         if 0 <= context.time_of_day < 6 * 60:
+#             return 100.0
+#         return 0.0
+#
+# To activate it, register it in scheduler.engine.run_simulation():
+#
+# scorer = WeightedScorer(
+#     weights=scenario.weights,
+#     rules=[
+#         ...,
+#         (ElectricityCostRule(), "electricity"),
+#     ],
+# )
+#
+# Then add an `electricity` field with a default to scheduler.models.Weights
+# and set `weights.electricity` in scenario YAML when a scenario needs it.

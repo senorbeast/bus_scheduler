@@ -112,9 +112,25 @@ times. This can make a range-valid plan look better than it will be at runtime.
 
 Code touch: include `available_from`/`available_until` in `_score_plan()` and `_book_plan()`.
 
+### FC-07 - Scorer-Side Hard Gates
+
+The scorer currently supports weighted soft queue arbitration, not true must-pass queue gates. A
+temporary workaround is to add a `SoftRule` and give it a very high scenario weight, but that still
+participates in numeric tradeoffs and is not equivalent to a hard constraint.
+
+Code touch: add an explicit queue-gating interface or pre-score filter for charger arbitration, then
+decide whether rejected buses wait, are deferred until a condition changes, or are surfaced as
+infeasible.
+
 ## Larger Architecture Changes
 
-### FC-07 - Dynamic Charger Failure And JIT Rerouting
+Soft-rule implementation convention: every real/user-facing `SoftRule` should have a matching
+scenario-tunable weight. Add a field to `Weights`, parse `weights.<rule_key>` in the loader, include
+the key in scenario YAML, and register the rule with the same key in `WeightedScorer`. The scorer has
+a defensive fallback for missing keys, but new soft rules should not rely on it. Tests should cover
+both nonzero weight behavior and `0.0` disabling the rule's influence.
+
+### FC-08 - Dynamic Charger Failure And JIT Rerouting
 
 Current static plans do not recover from runtime charger failures.
 
@@ -130,7 +146,7 @@ events:
 Code touch: add a `CHARGER_FAILED` event, update charger state, and choose a new reachable live
 station via `RouteProvider.get_next_reachable_stations()`.
 
-### FC-08 - Multiple Routes Sharing Stations
+### FC-09 - Multiple Routes Sharing Stations
 
 Current `Scenario` holds one `RouteProvider`. Multi-route support needs buses to reference a route
 and the scenario to hold multiple providers.
@@ -146,12 +162,12 @@ buses:
 Code touch: add `Bus.route_id`, `Scenario.routes`, route lookup helpers, and planner/engine dispatch
 through the bus route.
 
-### FC-09 - Graph-Based Routing
+### FC-10 - Graph-Based Routing
 
 Implement `GraphRouteProvider(RouteProvider)` for alternate paths and shared network hubs. Engine
 and rule code should continue to call the same route interface.
 
-### FC-10 - Station Queue Capacity And Diversion
+### FC-11 - Station Queue Capacity And Diversion
 
 Data change:
 
@@ -164,34 +180,34 @@ stations:
 Code touch: reject or divert arrivals when the queue is full, then select an alternate reachable
 station when possible.
 
-### FC-11 - Headway Management
+### FC-12 - Headway Management
 
 Add `HeadwayRule(SoftRule)` to penalize buses that are too close behind another same-direction bus.
 This needs route or scenario headway config and enough history in station logs to evaluate spacing.
 
-### FC-12 - Electricity Cost Rule
+### FC-13 - Electricity Cost Rule
 
 Add tariff data to the world or scenario and implement `ElectricityCostRule(SoftRule)` using
 `ScheduleContext.time_of_day`.
 
-### FC-13 - Named Priority Classes
+### FC-14 - Named Priority Classes
 
 `Bus.priority_class` was removed because queue priority is currently controlled by `Bus.weight`.
 Reintroduce a named priority field only if the loader maps classes to explicit score multipliers
 or rule behavior.
 
-### FC-14 - Operator Display Names
+### FC-15 - Operator Display Names
 
 `OperatorConfig.display_name` was removed from runtime models because the UI currently displays
 operator IDs. Reintroduce display names when the UI needs a human-friendly label separate from the
 stable operator ID.
 
-### FC-15 - Real-Time Priority Overrides
+### FC-16 - Real-Time Priority Overrides
 
 `ScheduleContext.priority_overrides` was removed because no UI/API set it. Reintroduce an override
 map when live dispatch controls need to temporarily boost or suppress individual buses.
 
-### FC-16 - Global Or Deeper Planner Optimization
+### FC-17 - Global Or Deeper Planner Optimization
 
 The current planner is greedy with 1-step lookahead. Larger or tighter fleets may need:
 

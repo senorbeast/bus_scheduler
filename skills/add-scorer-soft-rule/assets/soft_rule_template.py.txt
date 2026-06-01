@@ -1,0 +1,20 @@
+from scheduler.models import BusState, ScheduleContext
+from scheduler.rules.base import SoftRule
+
+
+class ExampleRule(SoftRule):
+    """Replace with the queue-priority signal being measured."""
+
+    name = "example_rule"
+
+    def score(self, bus_state: BusState, context: ScheduleContext) -> float:
+        # Return larger values for buses that should charge sooner.
+        return 0.0
+
+
+# Required companion changes:
+# 1. Add `example: float = 0.0` to scheduler.models.Weights.
+# 2. Parse `weights.example` in scheduler.loader._assemble_scenario().
+# 3. Register `(ExampleRule(), "example")` in scheduler.engine.run_simulation().
+# 4. Add `example: 0.0` or another explicit value to scenario YAML weights.
+# 5. Test nonzero behavior and 0.0 disabling behavior.

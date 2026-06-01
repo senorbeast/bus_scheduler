@@ -1,0 +1,18 @@
+from scheduler.models import RoutePositions
+from scheduler.rules.base import HardRule
+
+
+class ExampleConstraint(HardRule):
+    """Replace with the planner constraint being enforced."""
+
+    name = "example_constraint"
+
+    def is_satisfied(
+        self, stations: list[str], rp: RoutePositions, battery_range: float
+    ) -> bool:
+        # Return True when the candidate station plan is allowed.
+        return True
+
+
+# Register in scheduler.planner.get_valid_charging_plans():
+# rules = [StationOrderConstraint(), RangeConstraint(), ExampleConstraint()]

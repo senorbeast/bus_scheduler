@@ -1,0 +1,32 @@
+meta:
+  id: "scenario-new"
+  world_id: "bengaluru_kochi"
+  name: "New Scenario"
+  description: "Describe the operating condition being simulated."
+  version: "1.0"
+
+operators:
+  - {id: "kpn", weight: 1.0}
+  - {id: "freshbus", weight: 1.0}
+  - {id: "flixbus", weight: 1.0}
+
+weights:
+  individual: 1.0
+  operator: 1.0
+  overall: 1.0
+  shift: 0.0
+
+buses:
+  - id: "bus-BK-01"
+    operator: "kpn"
+    direction: "BK"
+    departure: "19:00"
+    weight: 1.0
+  - id: "bus-AB-01"
+    operator: "freshbus"
+    origin_node: "A"
+    destination_node: "B"
+    departure: "19:15"
+    requires_origin_charge: true
+    initial_range_km: 40
+    weight: 1.0
