@@ -13,7 +13,7 @@ operators: &operators
 weights: &weights
   individual: 1.0
   operator: 1.0
-  overall: 1000.0
+  overall: 1
   shift: 0.0
 
 buses:
