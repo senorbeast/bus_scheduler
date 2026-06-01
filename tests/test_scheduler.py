@@ -337,6 +337,10 @@ class SimulationTests(unittest.TestCase):
                 result = run_simulation(scenario)
                 self.assertEqual(len(result.bus_timetables), len(scenario.buses))
                 self.assertTrue(all(t.arrival_time >= t.departure_time for t in result.bus_timetables))
+                expected_avg_trip_time = sum(
+                    t.total_trip_time for t in result.bus_timetables
+                ) / len(result.bus_timetables)
+                self.assertEqual(result.avg_trip_time_minutes, expected_avg_trip_time)
                 for station_log in result.station_logs:
                     starts = [entry["charge_start"] for entry in station_log.entries]
                     self.assertEqual(starts, sorted(starts))

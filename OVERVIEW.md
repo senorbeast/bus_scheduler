@@ -58,7 +58,7 @@ decides charger order with a deterministic discrete-event simulation and weighte
 World file: route topology, station hardware, physics. Scenario file: bus schedules, weights.
 Adding a station, doubling chargers, or changing battery range is a YAML edit for data loading.
 Planner policy is separate: the current planner prefers minimum-stop plans, but can use one
-extra stop when all minimum-stop options exceed the world-configured wait threshold.
+extra stop when the best minimum-stop option exceeds the world-configured wait threshold.
 
 **2. Route Layer (scheduler/routes/)**
 `RouteProvider` abstract interface. `LinearRouteProvider` for current single-path route.
@@ -199,19 +199,34 @@ The v1 implementation supports one linear route with arbitrary bus endpoints on 
 For a bus trip, let `S_trip` be the number of candidate charging stations strictly between
 that bus's origin and destination.
 
-**Planner time complexity:** `O(2^S_trip * S_trip)` per bus. The planner enumerates every
-station subset and validates the distance gaps in that subset. This is acceptable for the
-current four-station corridor. For large networks, replace subset enumeration with dynamic
-programming or graph shortest-path search over reachable charging stops.
+**Planner time complexity:** valid plan generation is `O(B * 2^S * S)`, where `B` is bus count
+and `S` is the largest number of candidate charging stations between any bus's endpoints. The
+planner enumerates every station subset and validates the distance gaps in that subset.
 
-**Simulation time complexity:** approximately `O(E log E + Q * R + Q * B)` per run, where
-`E` is the number of simulation events, `Q` is the number of queue arbitration operations,
-`R` is the number of soft rules, and `B` is the number of buses. The `E log E` term comes
-from heap event scheduling. The `Q * B` term is from the current operator fairness rule,
-which scans bus history through `ScheduleContext.get_operator_delays()`.
+Plan assignment then sorts buses by predicted first charger arrival in `O(B log B)` and books
+plans into a planner-only charger pool. Let `K` be the maximum number of eligible plans considered
+for one bus after the minimum-stop and optional one-extra-stop filter, and let `C` be charger count.
+For each eligible plan, the current implementation scores this bus, copies the charger pool, books a
+trial plan, and evaluates the next bus's eligible plans as a one-step lookahead tiebreaker. That
+makes assignment roughly `O(B * K * (C + K * S))`; in the worst case `K` can still grow
+exponentially with `S`, so the planner remains exponential for dense station networks.
+
+This is acceptable for the current four-station corridor. For large networks, replace subset
+enumeration and trial-plan lookahead with bounded candidate generation, dynamic programming, beam
+search, or graph shortest-path search over reachable charging stops.
+
+**Simulation time complexity:** approximately `O(E log E + Q * W * (R + B) + Q * W log W)` per run,
+where `E` is the number of simulation events, `Q` is the number of queue arbitration operations,
+`W` is the maximum waiting queue size at an arbitration point, `R` is the number of soft rules, and
+`B` is the number of buses. The `E log E` term comes from heap event scheduling. The `Q * W * B`
+term is from the current operator fairness rule, which scans bus history through
+`ScheduleContext.get_operator_delays()` for each scored waiting bus. The `Q * W log W` term is from
+sorting the waiting queue by score and bus ID.
 
 **Space complexity:** `O(B + C + E + L)`, where `B` is bus state count, `C` is charger state
 count, `E` is queued future events, and `L` is completed charging log entries.
 
 **Scale note:** For 500+ buses, cache operator delay totals/counts incrementally in
-`ScheduleContext` to reduce operator fairness scoring from `O(B)` to `O(1)` per score call.
+`ScheduleContext` to reduce operator fairness scoring from `O(B)` to `O(1)` per score call. For
+large station networks, also cap planner candidate counts or switch away from full subset
+enumeration.

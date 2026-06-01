@@ -376,6 +376,7 @@ def _build_result(
     timetables = _build_timetables(bus_states)
     logs = _build_station_logs(station_states)
     waits = [timetable.total_wait_time for timetable in timetables]
+    trip_times = [timetable.total_trip_time for timetable in timetables]
     per_operator: dict[str, float] = {}
     for operator in {timetable.operator for timetable in timetables}:
         op_waits = [t.total_wait_time for t in timetables if t.operator == operator]
@@ -389,6 +390,7 @@ def _build_result(
         total_network_wait_minutes=sum(waits),
         per_operator_avg_wait=per_operator,
         simulation_duration_minutes=max(arrivals) - min(departures) if arrivals else 0.0,
+        avg_trip_time_minutes=sum(trip_times) / len(trip_times) if trip_times else 0.0,
         max_single_bus_wait_minutes=max(waits) if waits else 0.0,
     )
 

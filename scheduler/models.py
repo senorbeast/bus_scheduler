@@ -374,4 +374,5 @@ class SimulationResult:
     total_network_wait_minutes: float
     per_operator_avg_wait: dict[str, float]
     simulation_duration_minutes: float
+    avg_trip_time_minutes: float
     max_single_bus_wait_minutes: float

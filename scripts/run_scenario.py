@@ -36,6 +36,7 @@ def main() -> None:
     print(f"Total wait: {result.total_network_wait_minutes:.1f} min")
     print(f"Max single-bus wait: {result.max_single_bus_wait_minutes:.1f} min")
     print(f"Simulation duration: {result.simulation_duration_minutes:.1f} min")
+    print(f"Average trip time: {result.avg_trip_time_minutes:.1f} min")
     print("Per-operator average wait:")
     for operator, wait in sorted(result.per_operator_avg_wait.items()):
         print(f"  {operator}: {wait:.1f} min")

@@ -12,18 +12,6 @@ This project uses `uv`.
 uv run streamlit run app.py
 ```
 
-During active development, run Streamlit with save-triggered reruns and polling:
-
-```bash
-uv run streamlit run app.py --server.runOnSave true --server.fileWatcherType poll
-```
-
-Code edits rerun the Streamlit script automatically. Adding or editing
-`scenarios/scenario_*.yaml` under the repo should also be detected because Streamlit watches the
-current working directory and subdirectories. If a brand-new scenario file does not appear
-immediately, press Streamlit's rerun button or refresh the browser; the scenario dropdown is rebuilt
-by `list_scenarios("scenarios")` on each script run.
-
 Run tests:
 
 ```bash
@@ -59,6 +47,20 @@ weights:
   overall: 0.5
   shift: 0.0
 ```
+
+Rule weights affect charger queue arbitration only: when multiple buses are waiting for a free
+charger, the weighted soft-rule score decides which waiting bus charges next. They do not change
+precomputed charging plans, departure times, charger capacity, travel speed, or charge duration.
+Increasing `overall` gives more priority to buses with more downstream travel time remaining, so it
+can shift who waits and who arrives last, but it is not guaranteed to reduce total wait.
+
+The Streamlit summary metrics are:
+
+- Total Wait: sum of all bus wait time before charging starts.
+- Max Bus Wait: highest accumulated charging wait for any single bus.
+- Network Duration: earliest scheduled departure to latest simulated arrival.
+- Avg Trip Time: average scheduled-departure-to-arrival trip time across all buses.
+- Buses: number of trips in the selected scenario.
 
 To test a fresh scenario, add a new `scenarios/scenario_<number>_<name>.yaml` file and run:
 

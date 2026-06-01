@@ -95,9 +95,9 @@ Code touch: add `DriverShiftHardRule` or a post-simulation validation pass.
 
 ### FC-05 - Adaptive Extra-Stop Trigger
 
-The planner can use one extra charging stop when every minimum-stop option exceeds the
+The planner can use one extra charging stop when the best minimum-stop option exceeds the
 world-configured `planner.extra_stop_wait_threshold_minutes` value. That threshold is still a fixed
-policy input.
+policy input, and the extra stop is still limited to one additional charging session.
 
 Future alternatives:
 

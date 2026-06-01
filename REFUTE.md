@@ -21,7 +21,7 @@ documentation. Items marked fixed are implemented in the code today.
 | Charger availability helper | Fixed by `ChargerState.can_charge_at()` and queue rechecks. |
 | Direction-only trips | Fixed. Buses may use explicit `origin_node` and `destination_node`. |
 | Departure-order planner bias | Fixed. Planner orders by predicted first station arrival. |
-| Minimum-stop-only planner | Partially fixed. One extra stop is allowed when minimum-stop predicted wait exceeds the world-configured threshold. |
+| Minimum-stop-only planner | Partially fixed. One extra stop is allowed when the best minimum-stop predicted wait exceeds the world-configured threshold. |
 
 ## Open Risks
 
