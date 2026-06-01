@@ -20,7 +20,7 @@ from scheduler.models import (
     StationState,
     time_str_to_minutes,
 )
-from scheduler.planner import select_charging_plan
+from scheduler.planner import assign_charging_plans
 from scheduler.rules.soft_rules import (
     DriverShiftProximityRule,
     IndividualWaitRule,
@@ -63,7 +63,7 @@ def run_simulation(scenario: Scenario) -> SimulationResult:
             (DriverShiftProximityRule(), "shift"),
         ],
     )
-    bus_plans = _assign_plans(scenario)
+    bus_plans = assign_charging_plans(scenario)
     bus_states = _build_bus_states(scenario, bus_plans)
     station_states = {
         station.id: StationState(
@@ -125,18 +125,6 @@ def run_simulation(scenario: Scenario) -> SimulationResult:
             seq = _handle_queue_recheck(event, context, scorer, event_queue, seq)
 
     return _build_result(scenario, bus_states, station_states)
-
-
-def _assign_plans(scenario: Scenario) -> dict[str, list[str]]:
-    counters = {"BK": 0, "KB": 0}
-    plans: dict[str, list[str]] = {}
-    for bus in scenario.buses:
-        direction = bus.direction or scenario.route.get_direction(
-            bus.origin_node, bus.destination_node
-        )
-        plans[bus.id] = select_charging_plan(counters[direction], bus, scenario)
-        counters[direction] += 1
-    return plans
 
 
 def _build_bus_states(

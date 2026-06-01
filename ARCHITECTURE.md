@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — Bus Charging Scheduler
+# ARCHITECTURE.md - Bus Charging Scheduler
 
 ## Design & Architecture Reference (v2)
 
@@ -89,7 +89,7 @@ This causes three problems:
 ### The RouteProvider Interface
 
 ```
-RouteProvider (ABC)                         ← scheduler/routes/base.py
+RouteProvider (ABC)                         ← scheduler/models.py
   ├── origin                  (property)
   ├── destination             (property)
   ├── get_node_positions(dir) → Dict[str, float]
@@ -192,10 +192,10 @@ The engine receives a standard `Scenario` object — it never sees the split.
 ### Formula
 
 ```
-score(bus) = priority_override(bus) × bus.weight × Σ_k( weights[k] × rule_k.score(bus, ctx) )
+score(bus) = bus.weight × Σ_k( normalized_weight[k] × rule_k.score(bus, ctx) )
 ```
 
-`priority_override` defaults to 1.0; set to >1.0 for real-time escalation (FC-27).
+Configured weights are normalized by their registered total before rule scores are combined.
 
 ### The Soft Rules
 
@@ -203,39 +203,29 @@ score(bus) = priority_override(bus) × bus.weight × Σ_k( weights[k] × rule_k.
 |---|---|---|---|
 | `IndividualWaitRule` | Minutes this bus has waited at this stop | [0, ~120] | Prevent starvation |
 | `OperatorFairnessRule` | `op_weight × avg fleet delay` for this operator | [0, ~200] | SLA compliance |
-| `OverallThroughputRule` | Remaining travel time to destination | [100, 540] | Network efficiency |
+| `OverallThroughputRule` | Remaining travel time to destination | [0, ~540] | Network efficiency |
 | `DriverShiftProximityRule` | Urgency as shift-end approaches journey-end | [0, ~300] | Driver welfare |
-| `HeadwayRule` | Penalises buses bunching too close behind the one ahead | [-100, 0] | Passenger spacing |
-| `ElectricityCostRule` | Penalises peak-hour charging | [-50, +10] | Cost optimisation |
+
+Future rules such as `HeadwayRule` and `ElectricityCostRule` fit the same scoring interface but
+are not implemented today.
 
 **Scale warning:** `OverallThroughputRule` produces values 4–5× larger than `IndividualWaitRule`
-at equal weights. Default `1.0/1.0/1.0` is correct per spec but biased toward throughput.
-For equal influence: `individual: 4.0, operator: 2.0, overall: 1.0`.
+at equal weights. Default equal weights are valid but biased toward throughput. For equal influence,
+raise `individual` and `operator` relative to `overall`.
 
-### Adding a New Soft Rule in Under 2 Minutes
+### Changing Weights and Adding Rules
 
-```python
-# 1. Write the class — scheduler/rules/soft_rules.py
-class ElectricityCostRule(SoftRule):
-    name = "electricity_cost"
-    def score(self, bus_state, context) -> float:
-        peak_start, peak_end = 18 * 60, 22 * 60
-        if peak_start <= context.time_of_day <= peak_end:
-            return -50.0
-        return 10.0
+The architecture keeps both operations at the edge of the system:
 
-# 2. Register — app.py (one line)
-(ElectricityCostRule(), "electricity"),
+- Changing an existing rule weight is a scenario YAML edit. See the concrete examples in
+  [OVERVIEW.md §5](OVERVIEW.md#5-code-reference-adding-a-soft-rule) and the scenario `weights`
+  blocks.
+- Adding a soft rule is one new `SoftRule` class, one scorer registration, and one optional
+  `Weights` field. See [OVERVIEW.md §5](OVERVIEW.md#5-code-reference-adding-a-soft-rule).
+- Adding a hard rule is a new `HardRule` implementation registered with the planner-side
+  validation path. See [OVERVIEW.md §6](OVERVIEW.md#6-code-reference-adding-a-hard-rule).
 
-# 3. Add weight with default — models.py (one line)
-electricity: float = 1.0
-
-# 4. Tune — scenario YAML (one line)
-weights:
-  electricity: 1.5
-```
-
-**Total: 1 class, 1 import, 1 list entry, 1 dataclass field, 1 YAML line.**
+The engine does not need rule-specific branches. It only calls the registered rule objects.
 
 ---
 
@@ -256,10 +246,12 @@ The planner enumerates all valid charging station sequences given the battery co
 | (A, D) | 100 · 340 · — | ❌ gap 340 > 240 |
 | (C, D) | 320 · — · — | ❌ gap 320 > 240 |
 
-Round-robin distribution: bus-BK-01 → (A,C), bus-BK-02 → (B,C), bus-BK-03 → (B,D),
-bus-BK-04 → (A,C), … This pre-distributes traffic across all valid plans.
+`assign_charging_plans()` keeps minimum-stop candidates by default, then assigns buses with one
+shared cross-direction charger pool. Buses are processed by predicted first-station arrival.
+When all minimum-stop candidates exceed the world-configured extra-stop wait threshold, the planner
+also considers one-stop-longer candidates. One-step lookahead breaks ties among equal-own-wait plans.
 
-**V2 upgrade:** Query live `StationState` queue depths and prefer plans routing toward less-loaded stations.
+**V2 upgrade:** Use K-step lookahead, beam search, or ILP when deeper cascades matter.
 
 ---
 
@@ -268,7 +260,6 @@ bus-BK-04 → (A,C), … This pre-distributes traffic across all valid plans.
 ```
 models.py          ← defines all dataclasses, RouteProvider ABC
   ↑                   no scheduler imports
-routes/base.py     ← RouteProvider ABC (redundant with models if kept there)
 routes/linear.py   ← LinearRouteProvider; imports RouteSegment from models
 routes/graph.py    ← GraphRouteProvider (V2); imports RouteProvider from models
 rules/base.py      ← SoftRule, HardRule ABCs; TYPE_CHECKING imports from models
@@ -285,15 +276,37 @@ app.py             ← imports engine, loader, ui components
 
 ---
 
-## 8. Directory Structure
+## 8. Data Structure Design
+
+The data model separates stable configuration, route topology, mutable simulation state, and
+output records.
+
+| Structure | Purpose | Why it is shaped this way |
+|---|---|---|
+| `Scenario` | Merged runtime input from world + scenario YAML | The engine gets one object and does not care which file a value came from. |
+| `RouteProvider` | Abstract route topology API | Engine, planner, and rules ask for positions/distances/reachability without knowing whether the route is linear or graph-based. |
+| `Bus` | Immutable trip request | Bus identity, operator, endpoints, departure, priority, and shift metadata stay stable during a run. |
+| `Station` / `Charger` | Immutable physical hardware config | Hardware definition is separate from runtime queue/free-time state. |
+| `BusState` | Mutable per-bus runtime state | Tracks current position, range, planned stop index, waits, and completed charge events. |
+| `StationState` / `ChargerState` | Mutable station runtime state | Maintains charger availability, waiting queue, and station charge log independently of route direction. |
+| `RoutePositions` | Planner validation input | Gives hard rules a compact distance view without coupling them to the full scenario. |
+| `SimulationResult` | Stable output wrapper | Allows adding aggregate metrics without changing call sites that consume simulation output. |
+
+This split is what keeps common changes local: YAML changes modify configuration objects,
+planner changes modify plan assignment, and rule changes modify queue priority without rewriting
+the event loop.
+
+---
+
+## 9. Directory Structure
 
 ```
 bus_scheduler/
 ├── app.py
-├── requirements.txt
+├── pyproject.toml
+├── uv.lock
 ├── README.md
 ├── ARCHITECTURE.md         ← this file
-├── ASSUMPTIONS.md
 ├── FUTURE_CHANGES.md
 ├── OVERVIEW.md
 ├── PLAN.md
@@ -307,7 +320,9 @@ bus_scheduler/
 │   ├── scenario_2.yaml
 │   ├── scenario_3.yaml
 │   ├── scenario_4.yaml
-│   └── scenario_5.yaml
+│   ├── scenario_5.yaml
+│   ├── scenario_6_intermediate_ab_ba.yaml
+│   └── scenario_7_mixed_full_and_intermediate.yaml
 │
 ├── scheduler/
 │   ├── __init__.py
@@ -319,15 +334,14 @@ bus_scheduler/
 │   │
 │   ├── routes/
 │   │   ├── __init__.py
-│   │   ├── linear.py               # LinearRouteProvider (V1 — current)
-│   │   └── graph.py                # GraphRouteProvider  (V2 — future)
+│   │   └── linear.py               # LinearRouteProvider (V1 - current)
 │   │
 │   └── rules/
 │       ├── __init__.py
 │       ├── base.py                 # SoftRule, HardRule ABCs
 │       ├── hard_rules.py           # RangeConstraint, StationOrderConstraint
 │       └── soft_rules.py           # IndividualWait, OperatorFairness, OverallThroughput,
-│                                   # DriverShiftProximity, HeadwayRule (when enabled)
+│                                   # DriverShiftProximity
 │
 └── ui/
     ├── __init__.py
@@ -338,23 +352,95 @@ bus_scheduler/
 
 ---
 
-## 9. What Is Not Implemented in V1 (Own These Upfront)
+## 10. Anticipated No-Code Changes
+
+The current data structures were chosen so the following expected changes are data-only edits.
+For the full roadmap, including changes that intentionally require new code, see
+[FUTURE_CHANGES.md](FUTURE_CHANGES.md).
+
+| Future change | Data edit | Why no code changes are needed |
+|---|---|---|
+| Add more buses to a run | Add entries under `scenarios/*.yaml` `buses` | The loader builds a `Bus` per row; the engine schedules all buses in `scenario.buses`. |
+| Change departure times or endpoints | Edit `departure`, `origin_node`, `destination_node` | Direction and distances are derived through `RouteProvider`; no hardcoded bus list exists. |
+| Change existing rule weights | Edit the scenario `weights` block | `WeightedScorer` reads weights dynamically by key from `Scenario.weights`. |
+| Change operator priority | Edit `operators[].weight` | `OperatorFairnessRule` reads operator config at scoring time. |
+| Change per-bus priority | Edit `buses[].weight` | `WeightedScorer` multiplies by `bus.weight`. |
+| Add a charger to an existing station | Add another `stations[].chargers[]` row in the world file | `Station.chargers` is a tuple/list of hardware; `StationState` creates one runtime state per operational charger. |
+| Change charger availability windows | Edit `available_from` / `available_until` | Loader converts windows to `ChargerState`; runtime charger checks use `can_charge_at()`. |
+| Change battery range, charge time, or speed globally | Edit `world/*.yaml` `physics` | Planner and engine read `Scenario.physics`, not constants. |
+| Add an intermediate station on the same linear route | Add route segments and a station row in the world file | `LinearRouteProvider` recomputes positions and the planner can enumerate the station. The planner keeps minimum-stop plans by default, but may use one extra stop when every minimum-stop candidate exceeds the configured wait threshold. |
+| Add a new scenario over the same world | Add a new `scenarios/scenario_*.yaml` referencing `world_id` | Loader merges any scenario with the referenced world into the same `Scenario` shape. |
+
+Changes such as graph routing, dynamic charger failure recovery, partial charging duration, or
+new rule classes are supported by the architecture but still require code additions. Those are
+documented in [FUTURE_CHANGES.md](FUTURE_CHANGES.md).
+
+---
+
+## 11. Project Assumptions
+
+These separate problem givens from modeling choices and known technical limits.
+
+### Given
+
+Facts provided by the current problem setup.
+
+| Given | Meaning |
+|---|---|
+| One Bengaluru-Kochi corridor | The current world models one ordered corridor from Bengaluru to Kochi. |
+| Fixed charging stations on that corridor | Stations A-D are the charging points available to buses in the baseline world. |
+| Shared physical stations across directions | BK and KB buses contend for the same station chargers; this is handled by one `StationState` per station ID. |
+| Battery range and charge time are world inputs | Range, charge duration, and travel speed come from `world/*.yaml`, not code constants. |
+| Scenario files define operations | Buses, departures, operators, and rule weights are run-specific scenario data. |
+| Constant travel speed | Travel time is distance / `physics.travel_speed_kmh`; no traffic or segment speed variation is modeled. |
+
+### Assumptions
+
+Operational assumptions intentionally made for the current simulator.
+
+| Assumption | Current meaning |
+|---|---|
+| Static route topology during a run | Roads and station order do not change mid-simulation. |
+| Chargers do not fail mid-run | `operational` is loaded at startup; no runtime failure event exists. |
+| Unlimited station waiting area | A station queue can grow without capacity rejection or diversion. |
+| Origin charging is explicit | A bus only charges before departure when `requires_origin_charge: true`. |
+| Soft rules arbitrate queues only | Hard feasibility is handled by planner rules; runtime queue priority is weighted soft scoring. |
+| Time is deterministic minutes from midnight | Simulations are deterministic and can represent next-day arrivals, but no calendar/service-day logic exists. |
+
+### Current Technical Assumptions / Future Enhancements
+
+Technical limits that are acceptable for V1 and already have a path forward.
+
+| Current technical assumption | Future enhancement |
+|---|---|
+| V1 uses `LinearRouteProvider`, so every bus travels forward along one active path. | `GraphRouteProvider` for multi-path routing. |
+| En-route charging plans are assigned before simulation and not revised. | JIT station selection after each stop. |
+| Planner allows at most one extra stop for congestion relief. | K-step, beam-search, or ILP planning over larger candidate sets. |
+| Every completed charge resets range to full after one global `charge_time_minutes`. | Per-bus charge strategy and per-charger charge times. |
+| Planner lookahead is intentionally limited to tie-breaking equal-own-wait plans for the next bus in predicted-arrival order. | K-step lookahead, beam search, or ILP. |
+| Charger state changes only through queue/charge completion during a run. | FC-25 dynamic charger failure + JIT re-routing. |
+| No station waiting capacity is enforced. | Station queue capacity + diversion logic. |
+| No route service calendar exists. | Route service windows and day calendars. |
+
+---
+
+## 12. What Is Not Implemented in V1 (Own These Upfront)
 
 | Feature | Schema ready? | Code ready? | Path to V2 |
 |---|---|---|---|
-| Driver shift enforcement | ✅ field present | Schema only | `DriverShiftHardRule` class, ~15 lines |
-| Partial charging (`charge_to_full: false`) | ✅ flag present | Flag exists | ~15 lines in `_start_charging()` |
-| Charger availability windows | ✅ fields present | Not enforced | `ChargerState.can_charge_at()` + 1 call site |
-| Congestion-aware plan selection | — | Round-robin only | Pass `station_loads` to `select_charging_plan()` |
-| Score normalisation | — | Documented | `NormalisedWeightedScorer` wrapper |
+| Driver shift enforcement | Field present | Soft scoring only | `DriverShiftHardRule` class, ~15 lines |
+| Partial charging | Not present | Fixed-duration full charge only | Add strategy/capacity schema and update `_start_charging()` |
+| Charger availability windows | Fields present | Enforced | Add maintenance/failure events if availability changes mid-run |
+| Congestion-aware extra-stop selection | Threshold present in world YAML | One extra stop allowed when minimum-stop wait exceeds configured threshold | Ratio-based or experimentally tuned trigger |
+| Score normalisation | Config weights present | Configured weights normalized by total | Rule-output normalization if needed |
 | Graph-based routes | — | Not present | `GraphRouteProvider(RouteProvider)` |
-| World/scenario YAML split | — | Not present | Loader refactor (~30 lines) |
+| World/scenario YAML split | `world_id` reference | Implemented | Add more worlds/scenarios through YAML |
 | Dynamic charger failure | — | Not present | Requires R-16 moderate fix (~50 lines) |
 | Headway management | — | Not present | `HeadwayRule(SoftRule)`, ~20 lines |
 
 ---
 
-## 10. Key Design Defences (Interview Prep)
+## 13. Key Design Defences
 
 **"Why not CP-SAT?"**
 Solver is a black box. I can't walk through why bus-BK-03 got priority over bus-KB-07 at 21:15

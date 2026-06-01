@@ -18,6 +18,12 @@ Run tests:
 uv run python -m unittest discover -s tests
 ```
 
+Run a quick syntax/import check:
+
+```bash
+uv run python -m compileall app.py scheduler ui tests
+```
+
 ## Scenarios
 
 - `scenario_1.yaml` through `scenario_5.yaml` are the original full-corridor baseline scenarios.
@@ -26,8 +32,15 @@ uv run python -m unittest discover -s tests
 The original scenario intent is preserved. Intermediate-trip behavior is demonstrated through
 separate scenario files.
 
+## Current Scope
+
+- One linear world route is implemented: `Bengaluru -> A -> B -> C -> D -> Kochi`.
+- En-route charging plans are assigned before simulation and are not revised mid-run.
+- Origin charging is supported for station-origin trips with `requires_origin_charge: true`.
+- Charger availability windows are enforced during simulation.
+- Dynamic charger failures, graph routes, queue capacity, and partial-charge duration remain future work.
+
 ## Deployment
 
 Streamlit Community Cloud supports `uv.lock`, and this repo intentionally uses a single Python
 dependency source: `pyproject.toml` plus `uv.lock`.
-

@@ -16,6 +16,9 @@ physics:
   travel_speed_kmh: 60
   charge_to_full: true
 
+planner:
+  extra_stop_wait_threshold_minutes: 120
+
 stations:
   - id: "A"
     chargers:
@@ -29,4 +32,3 @@ stations:
   - id: "D"
     chargers:
       - {id: "D-1", operational: true, available_from: "00:00", available_until: "23:59"}
-

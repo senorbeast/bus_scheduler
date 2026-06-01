@@ -14,9 +14,15 @@ class WeightedScorer:
         self.rules = rules
 
     def score(self, bus_state: BusState, context: ScheduleContext) -> float:
-        override = context.priority_overrides.get(bus_state.bus.id, 1.0)
-        rule_total = sum(
-            getattr(self.weights, weight_key, 1.0) * rule.score(bus_state, context)
+        weighted_rules = [
+            (rule, getattr(self.weights, weight_key, 1.0))
             for rule, weight_key in self.rules
+        ]
+        total_weight = sum(weight for _rule, weight in weighted_rules)
+        if total_weight <= 0:
+            return 0.0
+        rule_total = sum(
+            (weight / total_weight) * rule.score(bus_state, context)
+            for rule, weight in weighted_rules
         )
-        return override * bus_state.bus.weight * rule_total
+        return bus_state.bus.weight * rule_total

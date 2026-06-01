@@ -110,7 +110,13 @@ class Physics:
     battery_range_km: float
     charge_time_minutes: int
     travel_speed_kmh: float
-    charge_to_full: bool = True
+
+
+@dataclass(frozen=True)
+class PlannerConfig:
+    """Planner policy loaded from world configuration."""
+
+    extra_stop_wait_threshold_minutes: float = 120.0
 
 
 @dataclass(frozen=True)
@@ -152,9 +158,7 @@ class Bus:
     departure: str
     origin_node: str
     destination_node: str
-    priority_class: str = "standard"
     weight: float = 1.0
-    charge_strategy: str = "full"
     requires_origin_charge: bool = False
     initial_range_km: float | None = None
     direction: str | None = None
@@ -166,7 +170,6 @@ class OperatorConfig:
     """Operator-level scheduling configuration."""
 
     id: str
-    display_name: str
     weight: float = 1.0
 
 
@@ -187,6 +190,7 @@ class Scenario:
     meta: dict[str, str]
     route: RouteProvider
     physics: Physics
+    planner: PlannerConfig
     stations: list[Station]
     operators: list[OperatorConfig]
     weights: Weights
@@ -316,7 +320,6 @@ class ScheduleContext:
     bus_states: dict[str, BusState]
     station_states: dict[str, StationState]
     current_time: float
-    priority_overrides: dict[str, float] = field(default_factory=dict)
 
     @property
     def time_of_day(self) -> float:
@@ -333,9 +336,6 @@ class ScheduleContext:
         return self.scenario.route.get_distance_between(
             bus_state.position, bus_state.bus.destination_node, bus_state.direction
         )
-
-    def set_priority_override(self, bus_id: str, multiplier: float) -> None:
-        self.priority_overrides[bus_id] = multiplier
 
 
 @dataclass(frozen=True)

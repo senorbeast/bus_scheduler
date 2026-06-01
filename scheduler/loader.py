@@ -14,6 +14,7 @@ from scheduler.models import (
     DriverShift,
     OperatorConfig,
     Physics,
+    PlannerConfig,
     RouteSegment,
     Scenario,
     Station,
@@ -81,7 +82,13 @@ def _assemble_scenario(
         battery_range_km=float(physics_data["battery_range_km"]),
         charge_time_minutes=int(physics_data["charge_time_minutes"]),
         travel_speed_kmh=float(physics_data["travel_speed_kmh"]),
-        charge_to_full=bool(physics_data.get("charge_to_full", True)),
+    )
+
+    planner_data = world_data.get("planner", {})
+    planner = PlannerConfig(
+        extra_stop_wait_threshold_minutes=float(
+            planner_data.get("extra_stop_wait_threshold_minutes", 120.0)
+        ),
     )
 
     stations = [
@@ -103,7 +110,6 @@ def _assemble_scenario(
     operators = [
         OperatorConfig(
             id=operator["id"],
-            display_name=operator["display_name"],
             weight=float(operator.get("weight", 1.0)),
         )
         for operator in scenario_data["operators"]
@@ -124,6 +130,7 @@ def _assemble_scenario(
         meta={"id": world_data["id"], **dict(scenario_data["meta"])},
         route=route,
         physics=physics,
+        planner=planner,
         stations=stations,
         operators=operators,
         weights=weights,
@@ -164,9 +171,7 @@ def _parse_bus(bus_data: dict[str, Any], route: LinearRouteProvider, physics: Ph
         departure=bus_data["departure"],
         origin_node=origin_node,
         destination_node=destination_node,
-        priority_class=bus_data.get("priority_class", "standard"),
         weight=float(bus_data.get("weight", 1.0)),
-        charge_strategy=bus_data.get("charge_strategy", "full"),
         requires_origin_charge=bool(bus_data.get("requires_origin_charge", False)),
         initial_range_km=float(initial_range) if initial_range is not None else physics.battery_range_km,
         direction=derived_direction,
