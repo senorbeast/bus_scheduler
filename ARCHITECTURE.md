@@ -216,9 +216,16 @@ Configured weights are normalized by their registered total before rule scores a
 Future rules such as `HeadwayRule` and `ElectricityCostRule` fit the same scoring interface but
 are not implemented today.
 
-**Scale warning:** `OverallThroughputRule` produces values 4–5× larger than `IndividualWaitRule`
-at equal weights. Default equal weights are valid but biased toward throughput. For equal influence,
-raise `individual` and `operator` relative to `overall`.
+**Scale warning:** Current normalization applies only to configured weights, not to each rule's
+output range. `OverallThroughputRule` still produces values 4-5x larger than `IndividualWaitRule`
+at equal configured weights, so default equal weights are valid but biased toward throughput. For
+equal influence, raise `individual` and `operator` relative to `overall`, or add rule-output
+normalization.
+
+**Current limitation:** Changing the `overall` rule weight often has limited visible impact on
+aggregate metrics. The rule only affects queue arbitration at charger-release events, and its score
+is dominated by mostly fixed route distance/travel time, so many scenarios keep the same charging
+order unless the competing buses are otherwise close in priority.
 
 ### Changing Weights and Adding Rules
 
@@ -440,6 +447,7 @@ Technical limits that are acceptable for V1 and already have a path forward.
 | Charger availability windows | Fields present | Enforced | Add maintenance/failure events if availability changes mid-run |
 | Congestion-aware extra-stop selection | Threshold present in world YAML | One extra stop allowed when minimum-stop wait exceeds configured threshold | Ratio-based or experimentally tuned trigger |
 | Score normalisation | Config weights present | Configured weights normalized by total | Rule-output normalization if needed |
+| Overall weight sensitivity | Config weight present | Changing `overall` often has limited impact on aggregate metrics because it only affects close queue-arbitration decisions | Rule-output normalization, scenario calibration, or a metric-targeted throughput rule |
 | Graph-based routes | — | Not present | `GraphRouteProvider(RouteProvider)` |
 | World/scenario YAML split | `world_id` reference | Implemented | Add more worlds/scenarios through YAML |
 | Dynamic charger failure | — | Not present | Requires R-16 moderate fix (~50 lines) |
